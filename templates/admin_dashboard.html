@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card bg-indigo">
+      <i class="fas fa-user-graduate icon"></i>
+      <h2>{{ total_students }}</h2><p>Total Students</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-cyan">
+      <i class="fas fa-chalkboard-teacher icon"></i>
+      <h2>{{ total_faculty }}</h2><p>Faculty Members</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-emerald">
+      <i class="fas fa-book icon"></i>
+      <h2>{{ total_subjects }}</h2><p>Subjects</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-amber">
+      <i class="fas fa-building icon"></i>
+      <h2>{{ total_depts }}</h2><p>Departments</p>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="chart-box">
+      <h6><i class="fas fa-chart-bar me-2 text-primary"></i>Students by Department</h6>
+      <canvas id="deptChart" height="200"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="fas fa-table me-2"></i>Dept Attendance Summary</h6>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead><tr><th>Dept</th><th>Students</th><th>Att %</th></tr></thead>
+            <tbody>
+            {% for d in dept_stats %}
+              {% set pct = (d.present / d.total_att * 100)|round(1) if d.total_att else 0 %}
+              <tr>
+                <td>{{ d.dept_name }}</td>
+                <td>{{ d.students }}</td>
+                <td>
+                  <span class="fw-bold {% if pct < 60 %}text-danger{% elif pct < 75 %}text-warning{% else %}text-success{% endif %}">
+                    {{ pct }}%
+                  </span>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="text-muted text-center">No data</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold mb-0"><i class="fas fa-bullhorn me-2 text-warning"></i>Recent Notices</h6>
+          <a href="{{ url_for('admin_notices') }}" class="btn btn-outline-warning btn-sm">Manage Notices</a>
+        </div>
+        {% for n in notices %}
+          <div class="d-flex justify-content-between align-items-start p-3 mb-2 rounded-3" style="background:#fffbeb">
+            <div>
+              <span class="badge text-capitalize me-2" style="background:#fef3c7;color:#92400e">{{ n.sender_role }}</span>
+              <span class="small">{{ n.message }}</span>
+            </div>
+            <span class="text-muted small flex-shrink-0">{{ n.date }}</span>
+          </div>
+        {% else %}
+          <p class="text-muted text-center py-3">No notices yet</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+new Chart(document.getElementById('deptChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ dept_labels|safe }},
+    datasets: [{
+      label: 'Students',
+      data: {{ dept_students|safe }},
+      backgroundColor: ['#4f46e5','#06b6d4','#10b981','#f59e0b','#ef4444'],
+      borderRadius: 8, borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+</script>
+{% endblock %}

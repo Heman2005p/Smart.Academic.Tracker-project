@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Departments{% endblock %}
+{% block page_title %}Manage Departments{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">Add Department</h6>
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Department Name</label>
+            <input type="text" name="dept_name" class="form-control" required placeholder="e.g. Computer Science">
+          </div>
+          <button type="submit" class="btn btn-success w-100">
+            <i class="fas fa-plus me-1"></i>Add Department
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">All Departments</h6>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead><tr><th>#</th><th>ID</th><th>Name</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for d in departments %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td class="text-muted">{{ d.dept_id }}</td>
+                <td class="fw-bold">{{ d.dept_name }}</td>
+                <td>
+                  <form method="POST" action="{{ url_for('admin_delete_department', did=d.dept_id) }}"
+                        class="d-inline" onsubmit="return confirm('Delete department?')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-center text-muted py-4">No departments yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

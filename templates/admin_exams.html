@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Exams{% endblock %}
+{% block page_title %}Manage Exams{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">Add Exam</h6>
+        <form method="POST">
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Exam Name</label>
+            <input type="text" name="exam_name" class="form-control form-control-sm" required placeholder="e.g. Mid Sem 1">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Exam Date</label>
+            <input type="date" name="exam_date" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Total Marks</label>
+            <input type="number" name="total_marks" class="form-control form-control-sm" required min="1">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Subject</label>
+            <select name="sub_id" class="form-select form-select-sm" required>
+              <option value="">-- Select Subject --</option>
+              {% for s in subjects %}
+                <option value="{{ s.sub_id }}">{{ s.sub_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Semester</label>
+            <select name="sem_id" class="form-select form-select-sm" required>
+              {% for s in semesters %}
+                <option value="{{ s.sem_id }}">{{ s.sem_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success btn-sm w-100">
+            <i class="fas fa-plus me-1"></i>Add Exam
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">All Exams ({{ exams|length }})</h6>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead>
+              <tr><th>#</th><th>Exam Name</th><th>Subject</th><th>Semester</th><th>Date</th><th>Total Marks</th></tr>
+            </thead>
+            <tbody>
+            {% for e in exams %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td class="fw-bold">{{ e.exam_name }}</td>
+                <td>{{ e.sub_name }}</td>
+                <td><span class="badge" style="background:#e0e7ff;color:#3730a3">{{ e.sem_label }}</span></td>
+                <td>{{ e.exam_date }}</td>
+                <td>{{ e.total_marks }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No exams added yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

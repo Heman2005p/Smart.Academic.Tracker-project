@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Enter Marks{% endblock %}
+{% block page_title %}Enter Marks{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <form method="GET" class="row g-2 mb-4">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Select Subject</label>
+        <select name="subject_id" class="form-select" onchange="this.form.submit()">
+          {% for s in subjects %}
+            <option value="{{ s.sub_id }}" {% if s.sub_id|string == selected_sub|string %}selected{% endif %}>
+              {{ s.sub_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+
+    {% if students %}
+    <form method="POST">
+      <input type="hidden" name="subject_id" value="{{ selected_sub }}">
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label fw-bold">Exam</label>
+          <select name="exam_id" class="form-select" required>
+            <option value="">-- Select Exam --</option>
+            {% for e in exams %}
+              <option value="{{ e.exam_id }}">{{ e.exam_name }} ({{ e.exam_date }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>#</th><th>Roll No</th><th>Name</th>
+              <th>Marks Obtained</th><th>Total Marks</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for st in students %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ st.rollno }}</td>
+              <td>{{ st.name }}</td>
+              <td>
+                <input type="hidden" name="student_ids" value="{{ st.student_id }}">
+                <input type="number" name="marks_obtained" class="form-control form-control-sm"
+                       min="0" max="100" placeholder="e.g. 75">
+              </td>
+              <td>
+                <input type="number" name="total_marks" class="form-control form-control-sm"
+                       min="1" value="100">
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="fas fa-save me-2"></i>Save Marks
+      </button>
+    </form>
+    {% else %}
+      <p class="text-muted text-center py-4">No students found for this subject</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

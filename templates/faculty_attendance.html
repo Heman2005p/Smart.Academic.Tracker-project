@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Mark Attendance{% endblock %}
+{% block page_title %}Mark Attendance{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <!-- Subject selector -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Select Subject</label>
+            <select name="subject_id" class="form-select" onchange="this.form.submit()">
+              {% for s in subjects %}
+                <option value="{{ s.sub_id }}" {% if s.sub_id|string == selected_sub|string %}selected{% endif %}>
+                  {{ s.sub_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attendance form -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="fas fa-clipboard-check me-2"></i>Mark Attendance</h6>
+        {% if students %}
+        <form method="POST">
+          <input type="hidden" name="subject_id" value="{{ selected_sub }}">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Date</label>
+              <input type="date" name="att_date" class="form-select" value="{{ today }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Time</label>
+              <input type="time" name="att_time" class="form-select">
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2">
+              <button type="button" class="btn btn-outline-success btn-sm" onclick="markAll('present')">
+                <i class="fas fa-check-double me-1"></i>All Present
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="markAll('absent')">
+                <i class="fas fa-times me-1"></i>All Absent
+              </button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead><tr><th>#</th><th>Roll No</th><th>Name</th><th>Status</th></tr></thead>
+              <tbody>
+              {% for st in students %}
+                <tr>
+                  <td>{{ loop.index }}</td>
+                  <td>{{ st.rollno }}</td>
+                  <td>{{ st.name }}</td>
+                  <td>
+                    <input type="hidden" name="student_ids" value="{{ st.student_id }}">
+                    <div class="btn-group att-status" role="group">
+                      <input type="radio" class="btn-check" name="status_{{ st.student_id }}"
+                             id="p{{ st.student_id }}" value="present" checked>
+                      <label class="btn btn-outline-success btn-sm" for="p{{ st.student_id }}">P</label>
+
+                      <input type="radio" class="btn-check" name="status_{{ st.student_id }}"
+                             id="a{{ st.student_id }}" value="absent">
+                      <label class="btn btn-outline-danger btn-sm" for="a{{ st.student_id }}">A</label>
+
+                      <input type="radio" class="btn-check" name="status_{{ st.student_id }}"
+                             id="l{{ st.student_id }}" value="late">
+                      <label class="btn btn-outline-warning btn-sm" for="l{{ st.student_id }}">L</label>
+                    </div>
+                    <!-- hidden field for form submission -->
+                    <input type="hidden" name="statuses" class="status-val-{{ st.student_id }}" value="present">
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="fas fa-save me-2"></i>Save Attendance
+          </button>
+        </form>
+        {% else %}
+          <p class="text-muted text-center py-4">No students found for this subject</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// sync radio -> hidden input
+document.querySelectorAll('.btn-check').forEach(radio => {
+  radio.addEventListener('change', function() {
+    const sid = this.id.replace(/^[pal]/, '');
+    document.querySelector('.status-val-' + sid).value = this.value;
+  });
+});
+
+function markAll(status) {
+  document.querySelectorAll('.att-status').forEach(group => {
+    const sid = group.querySelector('input').id.replace(/^[pal]/, '');
+    const radio = group.querySelector(`input[value="${status}"]`);
+    if (radio) { radio.checked = true; document.querySelector('.status-val-' + sid).value = status; }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login – Smart Academic Tracker</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .login-wrap { width: 100%; max-width: 440px; padding: 20px; }
+  .brand { text-align: center; margin-bottom: 36px; }
+  .brand-icon {
+    width: 68px; height: 68px; border-radius: 20px;
+    background: linear-gradient(135deg, #4f46e5, #06b6d4);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; color: #fff; margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(79,70,229,.4);
+  }
+  .brand h1 { color: #fff; font-size: 1.6rem; font-weight: 800; margin: 0; }
+  .brand p  { color: #94a3b8; font-size: .9rem; margin: 4px 0 0; }
+  .card {
+    background: rgba(255,255,255,.05); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 36px;
+  }
+  .form-label { color: #cbd5e1; font-size: .85rem; font-weight: 600; margin-bottom: 6px; }
+  .form-control {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px; color: #fff; padding: 12px 16px;
+    transition: .2s;
+  }
+  .form-control:focus {
+    background: rgba(255,255,255,.12); border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79,70,229,.2); color: #fff;
+  }
+  .form-control::placeholder { color: #64748b; }
+  .input-group-text {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px 0 0 10px; color: #64748b;
+  }
+  .btn-login {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 13px; font-weight: 700; font-size: 1rem;
+    width: 100%; margin-top: 8px; transition: .2s;
+    box-shadow: 0 4px 16px rgba(79,70,229,.4);
+  }
+  .btn-login:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(79,70,229,.5); color: #fff; }
+  .alert { border-radius: 10px; font-size: .9rem; }
+  .demo-roles { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.08); }
+  .demo-roles p { color: #64748b; font-size: .8rem; text-align: center; margin-bottom: 12px; }
+  .demo-chip {
+    display: inline-block; background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1); border-radius: 8px;
+    padding: 6px 12px; font-size: .78rem; color: #94a3b8; margin: 3px;
+    cursor: pointer; transition: .2s;
+  }
+  .demo-chip:hover { background: rgba(79,70,229,.2); border-color: #4f46e5; color: #fff; }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="brand">
+    <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
+    <h1>AcadTracker</h1>
+    <p>Smart Academic Management System</p>
+  </div>
+
+  <div class="card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} mb-3">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+      <div class="mb-3">
+        <label class="form-label"><i class="fas fa-envelope me-1"></i> Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="Enter your email" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label"><i class="fas fa-lock me-1"></i> Password</label>
+        <input type="password" name="password" class="form-control" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="btn-login">
+        <i class="fas fa-sign-in-alt me-2"></i>Sign In
+      </button>
+    </form>
+
+    <div class="demo-roles">
+      <p>Quick fill demo accounts</p>
+      <div class="text-center">
+        <span class="demo-chip" onclick="fill('admin@college.edu','admin123')">
+          <i class="fas fa-shield-alt me-1"></i>Admin
+        </span>
+        <span class="demo-chip" onclick="fill('faculty@college.edu','faculty123')">
+          <i class="fas fa-chalkboard-teacher me-1"></i>Faculty
+        </span>
+        <span class="demo-chip" onclick="fill('student@college.edu','student123')">
+          <i class="fas fa-user-graduate me-1"></i>Student
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function fill(email, pass) {
+  document.querySelector('input[name="email"]').value = email;
+  document.querySelector('input[name="password"]').value = pass;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}My Marks{% endblock %}
+{% block page_title %}My Marks & Results{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr><th>#</th><th>Subject</th><th>Exam</th><th>Date</th><th>Marks</th><th>Total</th><th>%</th></tr>
+        </thead>
+        <tbody>
+        {% for m in marks %}
+          {% set pct = (m.marks_obtained / m.total_marks * 100)|round(1) if m.total_marks else 0 %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ m.sub_name }}</td>
+            <td>{{ m.exam_name or '—' }}</td>
+            <td>{{ m.exam_date or '—' }}</td>
+            <td class="fw-bold">{{ m.marks_obtained }}</td>
+            <td>{{ m.total_marks }}</td>
+            <td>
+              <span class="fw-bold {% if pct < 40 %}text-danger{% elif pct < 60 %}text-warning{% else %}text-success{% endif %}">
+                {{ pct }}%
+              </span>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No marks records yet</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

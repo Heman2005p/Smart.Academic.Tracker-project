@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Subjects{% endblock %}
+{% block page_title %}Manage Subjects{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">Add Subject</h6>
+        <form method="POST">
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Subject Name</label>
+            <input type="text" name="sub_name" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Faculty</label>
+            <select name="faculty_id" class="form-select form-select-sm" required>
+              <option value="">-- Select Faculty --</option>
+              {% for f in faculty %}
+                <option value="{{ f.faculty_id }}">{{ f.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Department</label>
+            <select name="dept_id" class="form-select form-select-sm" required>
+              {% for d in departments %}
+                <option value="{{ d.dept_id }}">{{ d.dept_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Semester</label>
+            <select name="sem_id" class="form-select form-select-sm" required>
+              {% for s in semesters %}
+                <option value="{{ s.sem_id }}">{{ s.sem_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success btn-sm w-100">
+            <i class="fas fa-plus me-1"></i>Add Subject
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">All Subjects ({{ subjects|length }})</h6>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Subject</th>
+                <th>Faculty</th>
+                <th>Dept</th>
+                <th>Semester</th>
+                <th>Action</th> </tr>
+            </thead>
+            <tbody>
+            {% for s in subjects %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td class="fw-bold">{{ s.sub_name }}</td>
+                <td>{{ s.faculty_name }}</td>
+                <td>{{ s.dept_name }}</td>
+                <td><span class="badge" style="background:#e0e7ff;color:#3730a3">{{ s.sem_label }}</span></td>
+                <td>
+                  <form method="POST" action="{{ url_for('admin_delete_subject', sid=s.sub_id) }}"
+                        class="d-inline" onsubmit="return confirm('Delete this subject? This will also delete all related attendance and marks.')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No subjects yet</td></tr> {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

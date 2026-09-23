@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Faculty Dashboard{% endblock %}
+{% block page_title %}Faculty Dashboard{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card bg-indigo">
+      <i class="fas fa-book icon"></i>
+      <h2>{{ subjects|length }}</h2>
+      <p>My Subjects</p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card bg-emerald">
+      <i class="fas fa-users icon"></i>
+      <h2>{{ total_students }}</h2>
+      <p>Total Students</p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card bg-cyan">
+      <i class="fas fa-clipboard-check icon"></i>
+      <h2>{{ today_count }}</h2>
+      <p>Attendance Marked Today</p>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="fas fa-book me-2"></i>My Subjects</h6>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead><tr><th>#</th><th>Subject</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for s in subjects %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><span class="fw-bold">{{ s.sub_name }}</span></td>
+                <td>
+                  <a href="{{ url_for('faculty_attendance', subject_id=s.sub_id) }}"
+                     class="btn btn-sm btn-outline-primary me-1">
+                    <i class="fas fa-clipboard-check me-1"></i>Attendance
+                  </a>
+                  <a href="{{ url_for('faculty_marks', subject_id=s.sub_id) }}"
+                     class="btn btn-sm btn-outline-success">
+                    <i class="fas fa-pencil-alt me-1"></i>Marks
+                  </a>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="text-center text-muted">No subjects assigned</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="fas fa-bullhorn me-2 text-warning"></i>Recent Notices</h6>
+        {% for n in notices %}
+          <div class="p-3 mb-2 rounded-3" style="background:#fffbeb;border-left:3px solid #f59e0b">
+            <p class="mb-1 small">{{ n.message }}</p>
+            <span class="text-muted" style="font-size:.75rem">{{ n.date }}</span>
+          </div>
+        {% else %}
+          <p class="text-muted text-center py-4">No notices</p>
+        {% endfor %}
+        <a href="{{ url_for('faculty_notices') }}" class="btn btn-outline-warning btn-sm w-100 mt-2">
+          Post a Notice
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

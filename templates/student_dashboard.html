@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block title %}Student Dashboard{% endblock %}
+{% block page_title %}My Dashboard{% endblock %}
+
+{% block content %}
+<!-- KPI Row -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card bg-indigo">
+      <i class="fas fa-calendar-check icon"></i>
+      <h2>{{ overall_att }}%</h2>
+      <p>Overall Attendance</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-cyan">
+      <i class="fas fa-book-open icon"></i>
+      <h2>{{ att_rows|length }}</h2>
+      <p>Subjects Enrolled</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-emerald">
+      <i class="fas fa-star icon"></i>
+      <h2>{{ marks_rows|length }}</h2>
+      <p>Exams Attempted</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-amber">
+      <i class="fas fa-file-alt icon"></i>
+      <h2>{{ exams|length }}</h2>
+      <p>Upcoming Exams</p>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Attendance Chart -->
+  <div class="col-lg-7">
+    <div class="chart-box h-100">
+      <h6><i class="fas fa-chart-bar me-2 text-primary"></i>Attendance by Subject</h6>
+      <canvas id="attChart" height="200"></canvas>
+    </div>
+  </div>
+  <!-- Marks Chart -->
+  <div class="col-lg-5">
+    <div class="chart-box h-100">
+      <h6><i class="fas fa-chart-pie me-2 text-success"></i>Marks Overview</h6>
+      <canvas id="marksChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Attendance table -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="fas fa-table me-2"></i>Subject-wise Attendance</h6>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Subject</th><th>Present</th><th>Total</th><th>%</th></tr></thead>
+            <tbody>
+            {% for r in att_rows %}
+              {% set pct = (r.present / r.total * 100)|round(1) if r.total else 0 %}
+              <tr>
+                <td>{{ r.sub_name }}</td>
+                <td>{{ r.present }}</td>
+                <td>{{ r.total }}</td>
+                <td>
+                  <div class="att-bar mb-1">
+                    <div class="att-bar-fill {% if pct < 60 %}danger{% elif pct < 75 %}warning{% else %}success{% endif %}"
+                         style="width:{{ pct }}%"></div>
+                  </div>
+                  <span class="small fw-bold {% if pct < 60 %}text-danger{% elif pct < 75 %}text-warning{% else %}text-success{% endif %}">
+                    {{ pct }}%
+                  </span>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No attendance records yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Upcoming exams -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="fas fa-clock me-2"></i>Upcoming Exams</h6>
+        {% if exams %}
+          {% for e in exams %}
+          <div class="d-flex align-items-center justify-content-between p-3 mb-2 rounded-3" style="background:#f8fafc">
+            <div>
+              <div class="fw-bold text-dark">{{ e.exam_name }}</div>
+              <div class="small text-muted">{{ e.sub_name }}</div>
+            </div>
+            <div class="text-end">
+              <div class="badge" style="background:#e0e7ff;color:#3730a3">{{ e.exam_date }}</div>
+              <div class="small text-muted mt-1">Max: {{ e.total_marks }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center py-4">No upcoming exams</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notices -->
+<div class="card">
+  <div class="card-body">
+    <h6 class="fw-bold mb-3"><i class="fas fa-bullhorn me-2 text-warning"></i>Latest Notices</h6>
+    {% if notices %}
+      {% for n in notices %}
+      <div class="d-flex gap-3 p-3 mb-2 rounded-3" style="background:#fffbeb;border-left:4px solid #f59e0b">
+        <div>
+          <span class="badge mb-1 text-capitalize" style="background:#fef3c7;color:#92400e">{{ n.sender_role }}</span>
+          <p class="mb-0 small">{{ n.message }}</p>
+          <span class="text-muted" style="font-size:.75rem">{{ n.date }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="text-muted text-center py-3">No notices yet</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- AI Insights Teaser -->
+<div class="mt-3 p-4 rounded-4 text-white position-relative overflow-hidden"
+     style="background:linear-gradient(135deg,#1e1b4b 0%,#4f46e5 60%,#06b6d4 100%)">
+  <div class="position-absolute" style="right:-20px;top:-20px;font-size:8rem;opacity:.08">
+    <i class="fas fa-brain"></i>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+         style="width:52px;height:52px;background:rgba(255,255,255,.15)">
+      <i class="fas fa-brain fa-lg"></i>
+    </div>
+    <div class="flex-grow-1">
+      <h6 class="fw-bold mb-1">AI Performance Analysis Ready</h6>
+      <p class="mb-0 small opacity-75">
+        Get subject-wise grade forecasts, pass probabilities, risk alerts
+        and a personalised action plan — generated from your real data.
+      </p>
+    </div>
+    <a href="{{ url_for('student_insights') }}"
+       class="btn btn-light fw-bold px-4 flex-shrink-0"
+       style="color:#4f46e5;border-radius:10px">
+      View Insights <i class="fas fa-arrow-right ms-1"></i>
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const attLabels = {{ att_labels|safe }};
+const attPcts   = {{ att_pcts|safe }};
+const mkLabels  = {{ marks_labels|safe }};
+const mkPcts    = {{ marks_pcts|safe }};
+
+// Attendance bar chart
+new Chart(document.getElementById('attChart'), {
+  type: 'bar',
+  data: {
+    labels: attLabels,
+    datasets: [{
+      label: 'Attendance %',
+      data: attPcts,
+      backgroundColor: attPcts.map(v => v < 60 ? '#ef4444' : v < 75 ? '#f59e0b' : '#10b981'),
+      borderRadius: 8, borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true, plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' },
+           ticks: { callback: v => v + '%' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// Marks doughnut
+new Chart(document.getElementById('marksChart'), {
+  type: 'doughnut',
+  data: {
+    labels: mkLabels,
+    datasets: [{
+      data: mkPcts,
+      backgroundColor: ['#4f46e5','#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6'],
+      borderWidth: 2, borderColor: '#fff'
+    }]
+  },
+  options: {
+    responsive: true, cutout: '65%',
+    plugins: { legend: { position: 'bottom', labels: { padding: 12, boxWidth: 12 } } }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Reports Dashboard - Smart Academic Tracker{% endblock %}
+
+{% block page_title %}Reports & Analytics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metric-card { border-radius: 10px; border-left: 5px solid; background: white; }
+    .border-blue { border-left-color: #0d6efd; }
+    .border-green { border-left-color: #198754; }
+    .border-orange { border-left-color: #fd7e14; }
+    .border-red { border-left-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0 text-muted fw-bold">Select Active Report:</h5>
+    <form method="GET" action="{{ url_for('admin_reports') }}" class="d-flex">
+        <select name="type" class="form-select form-select-md shadow-sm border-primary" onchange="this.form.submit()" style="width: 300px; cursor: pointer;">
+            <option value="attendance" {% if report_type == 'attendance' %}selected{% endif %}>📉 Attendance Defaulters Report</option>
+            <option value="marks" {% if report_type == 'marks' %}selected{% endif %}>🏆 Student Performance (Marks) Report</option>
+        </select>
+    </form>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card border-blue shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Total Students</h6>
+                <h2 class="mb-0 text-dark">{{ total_students }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card border-green shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Total Faculty</h6>
+                <h2 class="mb-0 text-dark">{{ total_faculty }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card border-orange shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Active Alerts</h6>
+                <h2 class="mb-0 text-dark">{{ active_alerts }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card border-red shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">
+                    {% if report_type == 'attendance' %}Attendance Defaulters{% else %}Failed Students (<35%){% endif %}
+                </h6>
+                <h2 class="mb-0 text-danger">{{ dynamic_red_card }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-7 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-dark fw-bold">
+                    {% if report_type == 'attendance' %}Attendance Defaulters Report{% else %}Student Performance Report{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    
+                    {% if report_type == 'attendance' %}
+                    <table class="table table-hover align-middle" id="reportTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Roll No</th>
+                                <th>Name</th>
+                                <th>Subject</th>
+                                <th>Attendance %</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if defaulters %}
+                                {% for row in defaulters %}
+                                <tr>
+                                    <td>{{ row.rollno }}</td>
+                                    <td class="fw-semibold">{{ row.student_name }}</td>
+                                    <td>{{ row.sub_name }}</td>
+                                    <td class="fw-bold text-danger">{{ row.att_percent }}%</td>
+                                    <td><span class="badge bg-danger">Shortage</span></td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-success fw-bold py-4">
+                                        <i class="fas fa-check-circle me-2"></i> Excellent! No students are currently below the 75% threshold.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+
+                    {% elif report_type == 'marks' %}
+                    <table class="table table-hover align-middle" id="reportTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Roll No</th>
+                                <th>Name</th>
+                                <th>Exam</th>
+                                <th>Subject</th>
+                                <th>Marks</th>
+                                <th>%</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if marks_data %}
+                                {% for row in marks_data %}
+                                <tr>
+                                    <td>{{ row.rollno }}</td>
+                                    <td class="fw-semibold">{{ row.student_name }}</td>
+                                    <td>{{ row.exam_name }}</td>
+                                    <td>{{ row.sub_name }}</td>
+                                    <td>{{ row.marks_obtained }} / {{ row.total_marks }}</td>
+                                    <td class="fw-bold {% if row.percentage < 35 %}text-danger{% endif %}">{{ row.percentage }}%</td>
+                                    <td>
+                                        {% if row.percentage >= 35 %}
+                                            <span class="badge bg-success">Pass</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Fail</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted fw-bold py-4">
+                                        No marks data available yet.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+
+                </div>
+                
+                <div class="text-end mt-3">
+                    <button class="btn btn-sm btn-outline-danger me-2" onclick="window.print()"><i class="fas fa-file-pdf me-1"></i> Export to PDF</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="exportTableToCSV('Dynamic_Report.csv')"><i class="fas fa-file-excel me-1"></i> Export to Excel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-dark fw-bold">Subject Performance Overview</h5>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="performanceChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        const labels = {{ chart_labels | safe }};
+        const data = {{ chart_scores | safe }};
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Class Average Score (%)',
+                    data: data,
+                    backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                    borderColor: '#3730a3',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    });
+</script>
+
+<script>
+    function exportTableToCSV(filename) {
+        var csv = [];
+        var rows = document.querySelectorAll("#reportTable tr");
+        
+        for (var i = 0; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll("td, th");
+            
+            for (var j = 0; j < cols.length; j++) {
+                var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").trim();
+                row.push('"' + data + '"');
+            }
+            csv.push(row.join(","));
+        }
+
+        var csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+        var downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+</script>
+{% endblock %}

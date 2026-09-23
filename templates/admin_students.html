@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}Manage Students{% endblock %}
+{% block page_title %}Manage Students{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="fas fa-plus me-2 text-success"></i>Add Student</h6>
+        <form method="POST" action="{{ url_for('admin_add_student') }}">
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Full Name</label>
+            <input type="text" name="name" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Email</label>
+            <input type="email" name="email" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Password</label>
+            <input type="password" name="password" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Roll Number</label>
+            <input type="text" name="rollno" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Department</label>
+            <select name="dept_id" class="form-select form-select-sm" required>
+              <option value="">-- Select --</option>
+              {% for d in departments %}
+                <option value="{{ d.dept_id }}">{{ d.dept_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Semester</label>
+            <select name="semester" class="form-select form-select-sm" required>
+              {% for sm in semesters %}
+                <option value="{{ sm.sem_id }}">{{ sm.sem_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success btn-sm w-100">
+            <i class="fas fa-plus me-1"></i>Add Student
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">All Students ({{ students|length }})</h6>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead><tr><th>#</th><th>Roll</th><th>Name</th><th>Email</th><th>Dept</th><th>Sem</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for st in students %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ st.rollno }}</td>
+                <td class="fw-bold">{{ st.name }}</td>
+                <td class="text-muted small">{{ st.email }}</td>
+                <td>{{ st.dept_name }}</td>
+                <td>{{ st.semester }}</td>
+                <td>
+                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="openCameraModal('{{ st.student_id }}', '{{ st.name }}')">
+                    <i class="fas fa-camera"></i>
+                  </button>
+                  
+                  <form method="POST" action="{{ url_for('admin_delete_student', sid=st.student_id) }}"
+                        class="d-inline" onsubmit="return confirm('Delete this student?')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="7" class="text-center text-muted py-4">No students added yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Capture Face - <span id="studentNameDisplay"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <input type="hidden" id="captureStudentId">
+        
+        <video id="videoElement" autoplay playsinline style="width: 100%; border: 1px solid #ccc; border-radius: 5px;"></video>
+        
+        <canvas id="canvasElement" style="display:none;"></canvas>
+        
+        <img id="photoPreview" style="display:none; width: 100%; border: 1px solid #ccc; border-radius: 5px; margin-top: 10px;" />
+      </div>
+      <div class="modal-footer justify-content-center">
+        <button type="button" class="btn btn-secondary btn-sm" id="retakeBtn" style="display:none;">Retake</button>
+        <button type="button" class="btn btn-primary btn-sm" id="captureBtn">Capture</button>
+        <button type="button" class="btn btn-success btn-sm" id="savePhotoBtn" style="display:none;">Save Photo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let videoStream = null;
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvasElement');
+    const photoPreview = document.getElementById('photoPreview');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const savePhotoBtn = document.getElementById('savePhotoBtn');
+    const studentIdInput = document.getElementById('captureStudentId');
+
+    function openCameraModal(studentId, studentName) {
+        document.getElementById('studentNameDisplay').innerText = studentName;
+        studentIdInput.value = studentId;
+        
+        // Reset view
+        video.style.display = 'block';
+        photoPreview.style.display = 'none';
+        captureBtn.style.display = 'inline-block';
+        retakeBtn.style.display = 'none';
+        savePhotoBtn.style.display = 'none';
+
+        // Request camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                videoStream = stream;
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                alert("Could not access the camera. Please allow permissions in your browser.");
+            });
+            
+        // Open modal
+        new bootstrap.Modal(document.getElementById('cameraModal')).show();
+    }
+
+    // Stop camera when modal is closed
+    document.getElementById('cameraModal').addEventListener('hidden.bs.modal', function () {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+        }
+    });
+
+    // Snap the photo
+    captureBtn.addEventListener('click', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        photoPreview.src = canvas.toDataURL('image/jpeg');
+        video.style.display = 'none';
+        photoPreview.style.display = 'block';
+        captureBtn.style.display = 'none';
+        retakeBtn.style.display = 'inline-block';
+        savePhotoBtn.style.display = 'inline-block';
+    });
+
+    // Reset to take another photo
+    retakeBtn.addEventListener('click', () => {
+        video.style.display = 'block';
+        photoPreview.style.display = 'none';
+        captureBtn.style.display = 'inline-block';
+        retakeBtn.style.display = 'none';
+        savePhotoBtn.style.display = 'none';
+    });
+
+    // Send to backend
+    savePhotoBtn.addEventListener('click', () => {
+        fetch('/admin/students/save_face_cam', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: studentIdInput.value,
+                image: canvas.toDataURL('image/jpeg')
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                alert('Face saved successfully!');
+                location.reload(); 
+            } else {
+                alert('Error saving face.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Something went wrong.');
+        });
+    });
+</script>
+{% endblock %}

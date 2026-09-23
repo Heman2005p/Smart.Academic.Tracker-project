@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Admin Notices{% endblock %}
+{% block page_title %}Manage Notices{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">Post New Notice</h6>
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Message</label>
+            <textarea name="message" class="form-control" rows="5" required
+                      placeholder="Write notice message here..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-warning w-100">
+            <i class="fas fa-paper-plane me-2"></i>Post Notice
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">All Notices ({{ notices|length }})</h6>
+        {% for n in notices %}
+          <div class="d-flex justify-content-between align-items-start p-3 mb-2 rounded-3 border-start border-4 border-warning" style="background:#fffbeb">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge text-capitalize" style="background:#fef3c7;color:#92400e">
+                  {{ n.sender_role }}
+                </span>
+                <span class="text-muted small">{{ n.date }}</span>
+              </div>
+              <p class="mb-0">{{ n.message }}</p>
+            </div>
+            <form method="POST" action="{{ url_for('admin_delete_notice', nid=n.id) }}"
+                  class="ms-3" onsubmit="return confirm('Delete this notice?')">
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+          </div>
+        {% else %}
+          <p class="text-muted text-center py-4">No notices posted yet</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

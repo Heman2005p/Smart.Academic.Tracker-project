@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% block title %}Timetable{% endblock %}
+{% block page_title %}
+  {% if role == 'admin' %}Manage Timetable{% elif role == 'faculty' %}My Teaching Schedule{% else %}My Class Timetable{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Layout ── */
+.tt-wrap   { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tt-table  { border-collapse: separate; border-spacing: 0;
+             min-width: 700px; width: 100%; }
+
+/* ── Header row (days) ── */
+.tt-table thead th {
+  background: #0f172a; color: #fff;
+  padding: 14px 12px; font-size: .78rem;
+  font-weight: 700; letter-spacing: .5px;
+  text-align: center; white-space: nowrap;
+  position: sticky; top: 0; z-index: 2;
+}
+.tt-table thead th:first-child {
+  background: #1e293b; width: 80px;
+  border-radius: 12px 0 0 0;
+}
+.tt-table thead th:last-child { border-radius: 0 12px 0 0; }
+.tt-table thead th.today-col  { background: #4f46e5; }
+
+/* ── Time column ── */
+.time-cell {
+  background: #f8fafc; color: #64748b;
+  font-size: .75rem; font-weight: 700;
+  text-align: center; padding: 10px 8px;
+  border-right: 2px solid #e2e8f0;
+  border-bottom: 1px solid #f1f5f9;
+  white-space: nowrap; vertical-align: top;
+}
+
+/* ── Grid cells ── */
+.tt-cell {
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f1f5f9;
+  padding: 6px; vertical-align: top;
+  min-width: 120px; background: #fff;
+}
+.tt-cell.today-col { background: #fafaff; }
+
+/* ── Class card inside cell ── */
+.class-card {
+  border-radius: 10px; padding: 10px 12px;
+  height: 100%; min-height: 68px;
+  display: flex; flex-direction: column;
+  justify-content: space-between;
+  border-left: 3px solid transparent;
+  transition: transform .15s, box-shadow .15s;
+  cursor: default;
+}
+.class-card:hover { transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,.10); }
+.class-card .sub-name  { font-size: .82rem; font-weight: 700;
+                          color: #1e293b; line-height: 1.3; }
+.class-card .fac-name  { font-size: .72rem; color: #64748b; margin-top: 3px; }
+.class-card .room-chip { display: inline-flex; align-items: center; gap: 4px;
+                          font-size: .68rem; font-weight: 600; margin-top: 6px;
+                          padding: 2px 7px; border-radius: 99px; }
+.class-card .time-range { font-size: .68rem; color: #94a3b8; margin-top: 2px; }
+
+/* 8 subject colour palettes */
+.cc-0 { background:#eff6ff; border-color:#3b82f6; }
+.cc-0 .sub-name { color:#1d4ed8; }
+.cc-0 .room-chip{ background:#dbeafe; color:#1e40af; }
+
+.cc-1 { background:#f0fdf4; border-color:#22c55e; }
+.cc-1 .sub-name { color:#15803d; }
+.cc-1 .room-chip{ background:#dcfce7; color:#166534; }
+
+.cc-2 { background:#fdf4ff; border-color:#a855f7; }
+.cc-2 .sub-name { color:#7e22ce; }
+.cc-2 .room-chip{ background:#f3e8ff; color:#6b21a8; }
+
+.cc-3 { background:#fff7ed; border-color:#f97316; }
+.cc-3 .sub-name { color:#c2410c; }
+.cc-3 .room-chip{ background:#ffedd5; color:#9a3412; }
+
+.cc-4 { background:#fef2f2; border-color:#ef4444; }
+.cc-4 .sub-name { color:#b91c1c; }
+.cc-4 .room-chip{ background:#fee2e2; color:#991b1b; }
+
+.cc-5 { background:#ecfdf5; border-color:#10b981; }
+.cc-5 .sub-name { color:#065f46; }
+.cc-5 .room-chip{ background:#d1fae5; color:#065f46; }
+
+.cc-6 { background:#fffbeb; border-color:#f59e0b; }
+.cc-6 .sub-name { color:#92400e; }
+.cc-6 .room-chip{ background:#fef3c7; color:#92400e; }
+
+.cc-7 { background:#f0f9ff; border-color:#06b6d4; }
+.cc-7 .sub-name { color:#0e7490; }
+.cc-7 .room-chip{ background:#cffafe; color:#0e7490; }
+
+/* ── Empty cell ── */
+.empty-cell { height: 70px; }
+.free-label { text-align: center; color: #e2e8f0;
+              font-size: .7rem; padding-top: 24px; }
+
+/* ── Today highlight ── */
+.today-col-header { position: relative; }
+.today-col-header::after {
+  content: 'TODAY';
+  display: block; font-size: .6rem; letter-spacing: 1px;
+  color: rgba(255,255,255,.7); margin-top: 2px;
+}
+
+/* ── Legend ── */
+.legend-item { display: flex; align-items: center; gap: 8px;
+               font-size: .8rem; color: #475569; }
+.legend-dot  { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── Admin form ── */
+.add-form-card { border-radius: 16px; }
+.tt-filter-bar { background: #f8fafc; border-radius: 12px;
+                 padding: 14px 18px; border: 1px solid #e2e8f0; }
+
+/* ── Day stats strip ── */
+.day-stat { text-align: center; padding: 10px 8px;
+            border-radius: 10px; background: #f8fafc;
+            border: 1px solid #f1f5f9; }
+.day-stat .count { font-size: 1.4rem; font-weight: 800; color: #4f46e5; }
+.day-stat .lbl   { font-size: .7rem; color: #94a3b8; margin-top: 2px; }
+
+/* ── Print ── */
+@media print {
+  .sidebar, .topbar, .no-print { display: none !important; }
+  .main-content { margin-left: 0 !important; }
+  .tt-table thead th { background: #000 !important; color: #fff !important;
+                       -webkit-print-color-adjust: exact; }
+  .class-card { box-shadow: none !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# Build subject → colour index map #}
+{% set sub_colours = namespace(map={}, idx=0) %}
+{% for s in slots %}
+  {% if s.sub_name not in sub_colours.map %}
+    {% set _ = sub_colours.map.update({s.sub_name: sub_colours.idx % 8}) %}
+    {% set sub_colours.idx = sub_colours.idx + 1 %}
+  {% endif %}
+{% endfor %}
+
+{# Count classes per day for the stats strip #}
+{% set day_counts = namespace(map={}) %}
+{% for d in days %}
+  {% set cnt = namespace(v=0) %}
+  {% for t in times %}
+    {% if grid[d].get(t) %}{% set cnt.v = cnt.v + 1 %}{% endif %}
+  {% endfor %}
+  {% set _ = day_counts.map.update({d: cnt.v}) %}
+{% endfor %}
+
+<!-- ── Top toolbar ─────────────────────────────────────────────────────── -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2 no-print">
+  <div>
+    <span class="badge rounded-pill me-2"
+          style="background:#e0e7ff;color:#3730a3;font-size:.8rem;padding:6px 14px">
+      <i class="fas fa-calendar-week me-1"></i>Weekly Schedule
+    </span>
+    <span class="text-muted small">
+      {% if role == 'student' %}Sem {{ session.semester }}{% endif %}
+      &nbsp;·&nbsp; {{ slots|length }} class slot(s) total
+    </span>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+      <i class="fas fa-print me-1"></i>Print
+    </button>
+    {% if role == 'admin' %}
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSlotModal">
+      <i class="fas fa-plus me-1"></i>Add Slot
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Admin filter bar ────────────────────────────────────────────────── -->
+{% if role == 'admin' %}
+<form method="GET" class="tt-filter-bar mb-3 d-flex gap-3 flex-wrap align-items-end no-print">
+  <div>
+    <label class="form-label small fw-bold mb-1">Filter by Department</label>
+    <select name="dept_id" class="form-select form-select-sm" style="min-width:180px"
+            onchange="this.form.submit()">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+        <option value="{{ d.dept_id }}" {% if f_dept == d.dept_id|string %}selected{% endif %}>
+          {{ d.dept_name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="form-label small fw-bold mb-1">Filter by Semester</label>
+    <select name="sem_id" class="form-select form-select-sm" style="min-width:150px"
+            onchange="this.form.submit()">
+      <option value="">All Semesters</option>
+      {% for s in semesters %}
+        <option value="{{ s.sem_id }}" {% if f_sem == s.sem_id|string %}selected{% endif %}>
+          {{ s.sem_label }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% if f_dept or f_sem %}
+  <a href="{{ url_for('admin_timetable') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-times me-1"></i>Clear
+  </a>
+  {% endif %}
+</form>
+{% endif %}
+
+<!-- ── Day stats strip ────────────────────────────────────────────────── -->
+{% if slots %}
+<div class="row g-2 mb-3 no-print">
+  {% for d in days %}
+  <div class="col">
+    <div class="day-stat {% if d == today %}border-primary{% endif %}"
+         style="{% if d == today %}border-color:#4f46e5!important;background:#fafaff{% endif %}">
+      <div class="count">{{ day_counts.map[d] }}</div>
+      <div class="lbl">{{ d[:3] }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── Weekly grid ─────────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card-body p-0">
+    {% if slots %}
+    <div class="tt-wrap">
+      <table class="tt-table">
+        <thead>
+          <tr>
+            <th></th>
+            {% for d in days %}
+            <th class="{% if d == today %}today-col today-col-header{% endif %}">
+              {{ d }}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in times %}
+          <tr>
+            <td class="time-cell">{{ t }}</td>
+            {% for d in days %}
+              {% set slot = grid[d].get(t) %}
+              <td class="tt-cell {% if d == today %}today-col{% endif %}">
+                {% if slot %}
+                  {% set cc = sub_colours.map.get(slot.sub_name, 0) %}
+                  {% set et = slot.end_time %}
+                  {% if et and et.seconds is defined %}
+                    {% set eh = et.seconds // 3600 %}
+                    {% set em = (et.seconds % 3600) // 60 %}
+                    {% set end_str = '%02d:%02d'|format(eh, em) %}
+                  {% else %}
+                    {% set end_str = et|string|truncate(5, true, '') %}
+                  {% endif %}
+                  <div class="class-card cc-{{ cc }}">
+                    <div>
+                      <div class="sub-name">{{ slot.sub_name }}</div>
+                      <div class="fac-name">
+                        <i class="fas fa-user-tie" style="font-size:.65rem"></i>
+                        {{ slot.faculty_name }}
+                      </div>
+                      <div class="time-range">{{ t }} – {{ end_str }}</div>
+                    </div>
+                    <div>
+                      {% if slot.room %}
+                      <span class="room-chip">
+                        <i class="fas fa-map-marker-alt" style="font-size:.6rem"></i>
+                        {{ slot.room }}
+                      </span>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% if role == 'admin' %}
+                  <form method="POST" class="mt-1 no-print"
+                        onsubmit="return confirm('Delete this slot?')">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="tt_id"  value="{{ slot.tt_id }}">
+                    <button type="submit"
+                            class="btn btn-link btn-sm text-danger p-0 w-100"
+                            style="font-size:.68rem">
+                      <i class="fas fa-trash me-1"></i>Remove
+                    </button>
+                  </form>
+                  {% endif %}
+                {% else %}
+                  <div class="empty-cell">
+                    <div class="free-label">—</div>
+                  </div>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-calendar-times fa-3x mb-3 d-block" style="color:#e2e8f0"></i>
+      <strong>No timetable slots found.</strong>
+      {% if role == 'admin' %}
+        <div class="mt-2">Click <strong>Add Slot</strong> to create the first entry,
+        or run <code>timetable_migration.sql</code> to load sample data.</div>
+      {% elif role == 'student' %}
+        <div class="mt-2 small">Your timetable will appear here once your admin sets it up.</div>
+      {% else %}
+        <div class="mt-2 small">Your schedule will appear here once your admin assigns subjects to timetable slots.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Subject legend ─────────────────────────────────────────────────── -->
+{% if slots %}
+<div class="card no-print">
+  <div class="card-body">
+    <h6 class="fw-bold mb-3 small text-muted text-uppercase" style="letter-spacing:.5px">
+      <i class="fas fa-circle me-2"></i>Subject Legend
+    </h6>
+    <div class="d-flex flex-wrap gap-3">
+      {% set seen = namespace(subs=[]) %}
+      {% for s in slots %}
+        {% if s.sub_name not in seen.subs %}
+          {% set _ = seen.subs.append(s.sub_name) %}
+          {% set cc = sub_colours.map.get(s.sub_name, 0) %}
+          {% set dot_colors = ['#3b82f6','#22c55e','#a855f7','#f97316','#ef4444','#10b981','#f59e0b','#06b6d4'] %}
+          <div class="legend-item">
+            <div class="legend-dot" style="background:{{ dot_colors[cc] }}"></div>
+            <span>{{ s.sub_name }}</span>
+            <span class="text-muted" style="font-size:.72rem">
+              ({{ s.faculty_name }})
+            </span>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+{# ════════════════ ADMIN ADD SLOT MODAL ════════════════ #}
+{% if role == 'admin' %}
+<div class="modal fade" id="addSlotModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="border-radius:16px;border:none">
+      <div class="modal-header" style="background:#0f172a;border-radius:16px 16px 0 0">
+        <h6 class="modal-title text-white fw-bold">
+          <i class="fas fa-plus-circle me-2"></i>Add Timetable Slot
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="add">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Subject</label>
+              <select name="sub_id" class="form-select" required id="subSelect"
+                      onchange="autoFill(this)">
+                <option value="">-- Select Subject --</option>
+                {% for s in subjects %}
+                  <option value="{{ s.sub_id }}"
+                          data-dept="{{ s.dept_id }}"
+                          data-sem="{{ s.sem_id }}">
+                    {{ s.sub_name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Day of Week</label>
+              <select name="day_of_week" class="form-select" required>
+                {% for d in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+                  <option value="{{ d }}" {% if d == today %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Start Time</label>
+              <input type="time" name="start_time" class="form-control" required value="09:00">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">End Time</label>
+              <input type="time" name="end_time" class="form-control" required value="10:00">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Room / Lab <span class="text-muted fw-normal">(optional)</span></label>
+              <input type="text" name="room" class="form-control" placeholder="e.g. Lab 101">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Department</label>
+              <select name="dept_id" class="form-select" required id="deptSelect">
+                {% for d in departments %}
+                  <option value="{{ d.dept_id }}">{{ d.dept_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Semester</label>
+              <select name="sem_id" class="form-select" required id="semSelect">
+                {% for s in semesters %}
+                  <option value="{{ s.sem_id }}">{{ s.sem_label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mt-3 p-3 rounded-3 small text-muted" style="background:#f8fafc">
+            <i class="fas fa-info-circle me-1 text-primary"></i>
+            Selecting a subject auto-fills Department and Semester. The system will reject
+            duplicate slots (same dept + sem + day + start time).
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Add Slot
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if role == 'admin' %}
+// Auto-fill dept + sem when subject is selected
+const subjectMeta = {
+  {% for s in subjects %}
+  "{{ s.sub_id }}": { dept: "{{ s.dept_id }}", sem: "{{ s.sem_id }}" },
+  {% endfor %}
+};
+function autoFill(sel) {
+  const meta = subjectMeta[sel.value];
+  if (!meta) return;
+  document.getElementById('deptSelect').value = meta.dept;
+  document.getElementById('semSelect').value  = meta.sem;
+}
+{% endif %}
+
+// Highlight today column on load
+document.querySelectorAll('.today-col').forEach(el => {
+  el.style.background = el.tagName === 'TD' ? '#fafaff' : '';
+});
+</script>
+{% endblock %}

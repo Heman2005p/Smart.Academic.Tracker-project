@@ -1,0 +1,406 @@
+{% extends 'base.html' %}
+{% block title %}Email Alerts{% endblock %}
+{% block page_title %}Attendance Email Alerts{% endblock %}
+
+{% block extra_css %}
+<style>
+  .config-card { border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; padding:18px 20px; }
+  .config-row  { display:flex; justify-content:space-between; align-items:center;
+                 padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:.875rem; }
+  .config-row:last-child { border-bottom:none; }
+  .config-key  { color:#64748b; font-weight:600; }
+  .config-val  { color:#1e293b; font-family:monospace; font-size:.82rem;
+                 background:#e2e8f0; padding:2px 8px; border-radius:6px; }
+
+  .risk-row    { transition:.15s; }
+  .risk-row:hover { background:#fafafa; }
+
+  .att-mini-bar { height:6px; border-radius:99px; background:#e2e8f0; overflow:hidden; width:80px; display:inline-block; vertical-align:middle; }
+  .att-mini-fill{ height:100%; border-radius:99px; }
+
+  .log-entry   { border-radius:10px; background:#f8fafc; border:1px solid #f1f5f9;
+                 padding:12px 16px; margin-bottom:8px; display:flex;
+                 align-items:center; justify-content:space-between; gap:12px; }
+  .log-time    { font-size:.75rem; color:#94a3b8; white-space:nowrap; }
+
+  .preview-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+                   z-index:9999; align-items:center; justify-content:center; }
+  .preview-modal.open { display:flex; }
+  .preview-box  { background:#fff; border-radius:16px; padding:28px; max-width:520px;
+                  width:90%; max-height:80vh; overflow-y:auto;
+                  box-shadow:0 20px 60px rgba(0,0,0,.2); }
+
+  .badge-shortage { background:#fee2e2; color:#991b1b; border-radius:99px;
+                    padding:2px 9px; font-size:.72rem; font-weight:700; }
+  .badge-ok       { background:#d1fae5; color:#065f46; border-radius:99px;
+                    padding:2px 9px; font-size:.72rem; font-weight:700; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Top KPI strip ─────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card bg-rose">
+      <i class="fas fa-exclamation-triangle icon"></i>
+      <h2>{{ at_risk_students|length }}</h2>
+      <p>Students At Risk</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-indigo">
+      <i class="fas fa-paper-plane icon"></i>
+      <h2>{{ today_count }}</h2>
+      <p>Alerts Sent Today</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-amber">
+      <i class="fas fa-percent icon"></i>
+      <h2>{{ threshold }}%</h2>
+      <p>Alert Threshold</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card bg-cyan">
+      <i class="fas fa-envelope icon"></i>
+      <h2>{{ alert_log|length }}</h2>
+      <p>Recent Log Entries</p>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- ── Left column ─────────────────────────────────────────────────────── -->
+  <div class="col-lg-8">
+
+    <!-- Bulk send card -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+          <div>
+            <h6 class="fw-bold mb-0">
+              <i class="fas fa-users me-2 text-danger"></i>
+              Students Below {{ threshold }}% Attendance
+            </h6>
+            <p class="text-muted small mb-0 mt-1">
+              {{ at_risk_students|length }} student(s) have at least one subject below the threshold
+            </p>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <form method="POST" action="{{ url_for('admin_send_bulk_alerts') }}"
+                  onsubmit="return confirm('Send alerts to ALL {{ at_risk_students|length }} at-risk students?')">
+              <input type="hidden" name="force" value="false">
+              <button type="submit" class="btn btn-danger btn-sm">
+                <i class="fas fa-paper-plane me-1"></i>Send All Alerts
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('admin_send_bulk_alerts') }}"
+                  onsubmit="return confirm('Force-send to ALL students (ignores today\'s limit)?')">
+              <input type="hidden" name="force" value="true">
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-redo me-1"></i>Force Resend All
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {% if at_risk_students %}
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Roll No</th>
+                <th>Dept</th>
+                <th>Avg Att</th>
+                <th>Subjects at Risk</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for s in at_risk_students %}
+              {% set pct = s.avg_att or 0 %}
+              <tr class="risk-row">
+                <td>
+                  <div class="fw-bold small">{{ s.name }}</div>
+                  <div class="text-muted" style="font-size:.72rem">{{ s.email }}</div>
+                </td>
+                <td class="small">{{ s.rollno }}</td>
+                <td class="small">{{ s.dept_name }}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="att-mini-bar">
+                      <span class="att-mini-fill"
+                            style="width:{{ pct }}%;background:{% if pct < 60 %}#ef4444{% elif pct < 75 %}#f59e0b{% else %}#10b981{% endif %}">
+                      </span>
+                    </span>
+                    <span class="small fw-bold {% if pct < 60 %}text-danger{% elif pct < 75 %}text-warning{% else %}text-success{% endif %}">
+                      {{ pct }}%
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge-shortage">{{ s.shortage_count }} subject(s)</span>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <!-- Preview -->
+                    <button class="btn btn-outline-secondary btn-sm"
+                            onclick="previewAlert({{ s.student_id }}, '{{ s.name }}')"
+                            title="Preview shortage data">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <!-- Send -->
+                    <form method="POST"
+                          action="{{ url_for('admin_send_alert', sid=s.student_id) }}">
+                      <input type="hidden" name="force" value="false">
+                      <button type="submit" class="btn btn-danger btn-sm" title="Send alert">
+                        <i class="fas fa-paper-plane"></i>
+                      </button>
+                    </form>
+                    <!-- Force -->
+                    <form method="POST"
+                          action="{{ url_for('admin_send_alert', sid=s.student_id) }}"
+                          onsubmit="return confirm('Force send (ignores today limit)?')">
+                      <input type="hidden" name="force" value="true">
+                      <button type="submit" class="btn btn-outline-danger btn-sm" title="Force resend">
+                        <i class="fas fa-redo"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="fas fa-check-circle fa-2x text-success mb-3 d-block"></i>
+            <strong>All students are above {{ threshold }}% attendance.</strong>
+            <div class="small mt-1">No alerts need to be sent right now.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Alert log -->
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-history me-2 text-secondary"></i>Recent Alert Log
+        </h6>
+        {% if alert_log %}
+          {% for entry in alert_log %}
+          <div class="log-entry">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:36px;height:36px;background:#fee2e2;color:#991b1b;font-weight:700;font-size:.85rem">
+                {{ entry.student_name[0].upper() }}
+              </div>
+              <div>
+                <div class="fw-bold small">{{ entry.student_name }}</div>
+                <div class="text-muted" style="font-size:.72rem">
+                  {{ entry.email }} &nbsp;·&nbsp; {{ entry.rollno }} &nbsp;·&nbsp; {{ entry.dept_name }}
+                </div>
+              </div>
+            </div>
+            <div class="text-end flex-shrink-0">
+              <div class="badge-shortage mb-1">{{ entry.subject_count }} subject(s)</div>
+              <div class="log-time">{{ entry.sent_at }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center py-4">No alerts have been sent yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Right column ────────────────────────────────────────────────────── -->
+  <div class="col-lg-4">
+
+    <!-- SMTP Config display -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-cog me-2 text-secondary"></i>SMTP Configuration
+        </h6>
+        <div class="config-card">
+          <div class="config-row">
+            <span class="config-key">Host</span>
+            <span class="config-val">{{ email_config.smtp_host }}</span>
+          </div>
+          <div class="config-row">
+            <span class="config-key">Port</span>
+            <span class="config-val">{{ email_config.smtp_port }}</span>
+          </div>
+          <div class="config-row">
+            <span class="config-key">TLS</span>
+            <span class="config-val">{{ email_config.use_tls }}</span>
+          </div>
+          <div class="config-row">
+            <span class="config-key">Sender</span>
+            <span class="config-val">{{ email_config.sender_email[:20] }}…</span>
+          </div>
+          <div class="config-row">
+            <span class="config-key">Threshold</span>
+            <span class="config-val">{{ email_config.threshold }}%</span>
+          </div>
+        </div>
+        <div class="mt-2 p-2 rounded-2 small text-muted" style="background:#fffbeb">
+          <i class="fas fa-info-circle me-1 text-warning"></i>
+          To change these, edit <code>EMAIL_CONFIG</code> in
+          <code>email_alerts.py</code> or set environment variables.
+        </div>
+      </div>
+    </div>
+
+    <!-- Test email -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-vial me-2 text-primary"></i>Test SMTP Connection
+        </h6>
+        <p class="text-muted small mb-3">
+          Send a test email to verify your SMTP credentials are working before
+          sending real alerts.
+        </p>
+        <form method="POST" action="{{ url_for('admin_test_email') }}">
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Send test to</label>
+            <input type="email" name="test_email" class="form-control form-control-sm"
+                   placeholder="your@email.com" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="fas fa-paper-plane me-1"></i>Send Test Email
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-info-circle me-2 text-info"></i>How It Works
+        </h6>
+        <div class="d-flex flex-column gap-3">
+          <div class="d-flex gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:28px;height:28px;background:#e0e7ff;color:#3730a3;font-size:.75rem;font-weight:700">1</div>
+            <div class="small text-muted">
+              <strong class="text-dark">Automatic</strong> — alerts are sent whenever faculty marks attendance and a student drops below {{ threshold }}%
+            </div>
+          </div>
+          <div class="d-flex gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:28px;height:28px;background:#e0e7ff;color:#3730a3;font-size:.75rem;font-weight:700">2</div>
+            <div class="small text-muted">
+              <strong class="text-dark">Daily limit</strong> — each student receives at most one alert per day (use Force Resend to override)
+            </div>
+          </div>
+          <div class="d-flex gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:28px;height:28px;background:#e0e7ff;color:#3730a3;font-size:.75rem;font-weight:700">3</div>
+            <div class="small text-muted">
+              <strong class="text-dark">Bulk send</strong> — use "Send All Alerts" to notify every at-risk student at once, e.g. at end of week
+            </div>
+          </div>
+          <div class="d-flex gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:28px;height:28px;background:#e0e7ff;color:#3730a3;font-size:.75rem;font-weight:700">4</div>
+            <div class="small text-muted">
+              <strong class="text-dark">Email content</strong> — each email lists all affected subjects, exact attendance %, classes needed to recover, and a personalised message
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Preview Modal ────────────────────────────────────────────────────── -->
+<div class="preview-modal" id="previewModal">
+  <div class="preview-box">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="fw-bold mb-0" id="previewTitle">Shortage Preview</h6>
+      <button class="btn btn-sm btn-outline-secondary" onclick="closePreview()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="previewBody">Loading...</div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function previewAlert(studentId, studentName) {
+  document.getElementById('previewTitle').textContent = 'Shortage Preview — ' + studentName;
+  document.getElementById('previewBody').innerHTML =
+    '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+  document.getElementById('previewModal').classList.add('open');
+
+  try {
+    const res  = await fetch(`/admin/email-alerts/preview/${studentId}`);
+    const data = await res.json();
+
+    if (!data.has_shortage) {
+      document.getElementById('previewBody').innerHTML =
+        '<p class="text-success text-center py-3"><i class="fas fa-check-circle me-2"></i>No shortage detected.</p>';
+      return;
+    }
+
+    let rows = data.subjects.map(s => {
+      const color = s.att_pct < 60 ? '#ef4444' : s.att_pct < 70 ? '#f59e0b' : '#f97316';
+      const needed = s.total_classes > 0
+        ? Math.max(0, Math.ceil((data.threshold / 100 * s.total_classes - s.attended) / (1 - data.threshold / 100)))
+        : 0;
+      return `
+        <div class="p-3 mb-2 rounded-3" style="background:#f8fafc;border:1px solid #f1f5f9">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold small">${s.sub_name}</span>
+            <span class="fw-bold" style="color:${color};font-size:1.1rem">${s.att_pct}%</span>
+          </div>
+          <div style="height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-bottom:6px">
+            <div style="width:${Math.max(2,s.att_pct)}%;height:100%;background:${color};border-radius:99px"></div>
+          </div>
+          <div class="text-muted" style="font-size:.75rem">
+            ${s.attended} / ${s.total_classes} classes &nbsp;·&nbsp; Need <strong>${needed}</strong> more to reach ${data.threshold}%
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('previewBody').innerHTML = `
+      <div class="p-2 rounded-2 mb-3" style="background:#f0f9ff;border:1px solid #bae6fd">
+        <span class="small"><i class="fas fa-envelope me-1 text-primary"></i>
+        Will be sent to: <strong>${data.email}</strong></span>
+      </div>
+      ${rows}
+      <p class="text-muted small mt-2 mb-0">
+        <i class="fas fa-info-circle me-1"></i>
+        This is exactly what will be included in the alert email.
+      </p>`;
+  } catch(e) {
+    document.getElementById('previewBody').innerHTML =
+      '<p class="text-danger">Failed to load preview.</p>';
+  }
+}
+
+function closePreview() {
+  document.getElementById('previewModal').classList.remove('open');
+}
+
+document.getElementById('previewModal').addEventListener('click', function(e) {
+  if (e.target === this) closePreview();
+});
+</script>
+{% endblock %}

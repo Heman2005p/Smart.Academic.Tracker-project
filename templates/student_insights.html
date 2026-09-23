@@ -1,0 +1,537 @@
+{% extends 'base.html' %}
+{% block title %}AI Performance Insights{% endblock %}
+{% block page_title %}AI Performance Insights{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Hero banner ── */
+  .insights-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    border-radius: 20px; padding: 32px; color: #fff;
+    position: relative; overflow: hidden; margin-bottom: 24px;
+  }
+  .insights-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 70% 50%, rgba(99,102,241,.35) 0%, transparent 65%);
+  }
+  .insights-hero .hero-content { position: relative; z-index: 1; }
+  .hero-brain { font-size: 5rem; opacity: .12; position: absolute; right: 40px; top: 10px; }
+
+  /* ── KPI strip ── */
+  .kpi-card {
+    border-radius: 16px; padding: 20px 22px;
+    background: #fff; box-shadow: 0 1px 8px rgba(0,0,0,.06);
+    border-left: 4px solid transparent;
+  }
+  .kpi-card.indigo { border-color: #4f46e5; }
+  .kpi-card.cyan   { border-color: #06b6d4; }
+  .kpi-card.green  { border-color: #10b981; }
+  .kpi-card.amber  { border-color: #f59e0b; }
+  .kpi-val  { font-size: 2rem; font-weight: 800; line-height: 1; }
+  .kpi-lbl  { font-size: .8rem; color: #64748b; margin-top: 4px; }
+
+  /* ── Risk gauge ── */
+  .risk-badge { display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 99px; font-weight: 700; font-size: .9rem; }
+  .risk-high   { background:#fee2e2; color:#991b1b; }
+  .risk-medium { background:#fef3c7; color:#92400e; }
+  .risk-low    { background:#d1fae5; color:#065f46; }
+
+  /* ── Forecast subject cards ── */
+  .forecast-card {
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 1px 8px rgba(0,0,0,.06);
+    border: 1px solid #f1f5f9; background: #fff;
+    transition: transform .2s;
+  }
+  .forecast-card:hover { transform: translateY(-2px); }
+  .fc-header { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .fc-header.high   { background: linear-gradient(90deg,#fef2f2,#fff); border-bottom: 2px solid #ef4444; }
+  .fc-header.medium { background: linear-gradient(90deg,#fffbeb,#fff); border-bottom: 2px solid #f59e0b; }
+  .fc-header.low    { background: linear-gradient(90deg,#f0fdf4,#fff); border-bottom: 2px solid #10b981; }
+  .fc-body { padding: 18px 20px; }
+  .grade-badge {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: 800; flex-shrink: 0;
+  }
+  .grade-A-plus { background:#dbeafe; color:#1e40af; }
+  .grade-A      { background:#d1fae5; color:#065f46; }
+  .grade-B      { background:#e0e7ff; color:#3730a3; }
+  .grade-C      { background:#fef3c7; color:#92400e; }
+  .grade-D      { background:#ffedd5; color:#9a3412; }
+  .grade-F      { background:#fee2e2; color:#991b1b; }
+
+  .prob-bar { height: 10px; border-radius: 99px; background: #e2e8f0; overflow: hidden; margin: 8px 0; }
+  .prob-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+
+  .factor-chip {
+    display: inline-block; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 4px 10px; font-size: .75rem;
+    color: #475569; margin: 2px;
+  }
+
+  /* ── Insight cards ── */
+  .insight-card {
+    border-radius: 14px; padding: 18px 20px; border-left: 4px solid;
+    margin-bottom: 12px; display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-card.success { background:#f0fdf4; border-color:#10b981; }
+  .insight-card.warning { background:#fffbeb; border-color:#f59e0b; }
+  .insight-card.danger  { background:#fef2f2; border-color:#ef4444; }
+  .insight-card.info    { background:#f0f9ff; border-color:#06b6d4; }
+  .insight-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+  }
+  .insight-card.success .insight-icon { background:#bbf7d0; color:#15803d; }
+  .insight-card.warning .insight-icon { background:#fde68a; color:#b45309; }
+  .insight-card.danger  .insight-icon { background:#fecaca; color:#b91c1c; }
+  .insight-card.info    .insight-icon { background:#bae6fd; color:#0369a1; }
+
+  /* ── Action plan ── */
+  .action-card {
+    border-radius: 14px; background: #fff; padding: 16px 20px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.05); margin-bottom: 10px;
+    display: flex; gap: 14px; align-items: flex-start;
+    border: 1px solid #f1f5f9;
+  }
+  .action-priority-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 6px;
+  }
+
+  /* ── Strengths / Weaknesses ── */
+  .sw-card { border-radius: 14px; padding: 20px; }
+  .sw-row { display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9; }
+  .sw-row:last-child { border-bottom: none; }
+  .sw-score { font-size: 1.5rem; font-weight: 800; width: 56px; text-align: center;
+    flex-shrink: 0; }
+
+  /* ── GPA projection ── */
+  .gpa-meter {
+    position: relative; height: 28px; background: #e2e8f0;
+    border-radius: 99px; overflow: hidden; margin: 10px 0;
+  }
+  .gpa-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg,#ef4444,#f59e0b,#10b981);
+    transition: width 1.2s ease;
+  }
+  .gpa-label {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-weight: 800; font-size: .85rem; color: #1e293b;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ══ HERO BANNER ══════════════════════════════════════════════════════════ -->
+<div class="insights-hero">
+  <i class="fas fa-brain hero-brain"></i>
+  <div class="hero-content">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <div class="rounded-3 d-flex align-items-center justify-content-center"
+           style="width:56px;height:56px;background:rgba(255,255,255,.15)">
+        <i class="fas fa-brain fa-lg"></i>
+      </div>
+      <div>
+        <h4 class="mb-0 fw-800">AI Performance Analysis</h4>
+        <p class="mb-0 opacity-75 small">Generated on {{ report.generated_at }} · Based on your real attendance & marks data</p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+      <span class="risk-badge risk-{{ report.overall_risk }}">
+        <i class="fas fa-{% if report.overall_risk=='high' %}exclamation-triangle{% elif report.overall_risk=='medium' %}exclamation-circle{% else %}check-circle{% endif %}"></i>
+        {{ report.overall_risk|upper }} RISK
+      </span>
+      <span class="text-white opacity-75 small">
+        <i class="fas fa-chart-line me-1"></i>
+        Trend: <strong class="text-white">{{ report.trend|capitalize }}</strong>
+      </span>
+      <span class="text-white opacity-75 small">
+        <i class="fas fa-book me-1"></i>
+        {{ report.subjects_count }} subjects analysed
+      </span>
+      <span class="text-white opacity-75 small">
+        <i class="fas fa-exclamation me-1"></i>
+        {{ report.at_risk_count }} at high risk
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ KPI STRIP ════════════════════════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card indigo">
+      <div class="kpi-val" style="color:#4f46e5">{{ report.overall_att }}%</div>
+      <div class="kpi-lbl"><i class="fas fa-calendar-check me-1"></i>Overall Attendance</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card cyan">
+      <div class="kpi-val" style="color:#0284c7">{{ report.overall_marks }}%</div>
+      <div class="kpi-lbl"><i class="fas fa-star me-1"></i>Average Marks</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card green">
+      <div class="kpi-val" style="color:#059669">{{ report.predicted_gpa }}</div>
+      <div class="kpi-lbl"><i class="fas fa-graduation-cap me-1"></i>Predicted GPA (/ 10)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card amber">
+      <div class="kpi-val" style="color:#d97706">{{ report.passing_count }}/{{ report.subjects_count }}</div>
+      <div class="kpi-lbl"><i class="fas fa-check me-1"></i>Subjects Likely to Pass</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GPA PROJECTION ══════════════════════════════════════════════════════ -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="fw-bold mb-4">
+      <i class="fas fa-chart-line me-2 text-primary"></i>GPA Projection
+    </h6>
+    <div class="row g-4 align-items-center">
+      <div class="col-md-8">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="small fw-bold text-muted">Current Trajectory</span>
+          <span class="fw-bold" style="color:#4f46e5">{{ report.predicted_gpa }} / 10</span>
+        </div>
+        <div class="gpa-meter">
+          <div class="gpa-fill" style="width:{{ (report.predicted_gpa / 10 * 100)|round(0) }}%"></div>
+          <span class="gpa-label">{{ report.predicted_gpa }}</span>
+        </div>
+
+        <div class="d-flex justify-content-between mb-1 mt-3">
+          <span class="small fw-bold text-muted">If You Follow All Recommendations</span>
+          <span class="fw-bold text-success">{{ report.optimistic_gpa }} / 10</span>
+        </div>
+        <div class="gpa-meter">
+          <div class="gpa-fill" style="width:{{ (report.optimistic_gpa / 10 * 100)|round(0) }}%"></div>
+          <span class="gpa-label">{{ report.optimistic_gpa }}</span>
+        </div>
+      </div>
+      <div class="col-md-4 text-center">
+        <div class="p-4 rounded-3" style="background:#f0fdf4">
+          <div style="font-size:2.5rem;font-weight:800;color:#059669">
+            +{{ (report.optimistic_gpa - report.predicted_gpa)|round(1) }}
+          </div>
+          <div class="small text-muted">potential GPA gain<br>by following action plan</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUBJECT FORECASTS ════════════════════════════════════════════════════ -->
+<h6 class="fw-bold mb-3 text-dark">
+  <i class="fas fa-chart-bar me-2 text-indigo"></i>Subject-wise Grade Forecast
+</h6>
+<div class="row g-3 mb-4">
+  {% for fc in report.forecasts %}
+  <div class="col-md-6 col-lg-4">
+    <div class="forecast-card">
+      <div class="fc-header {{ fc.risk_level }}">
+        <div class="flex-grow-1 me-2">
+          <div class="fw-bold text-dark" style="font-size:.95rem">{{ fc.sub_name }}</div>
+          <span class="risk-badge risk-{{ fc.risk_level }} mt-1" style="font-size:.72rem;padding:3px 10px">
+            <i class="fas fa-circle" style="font-size:.4rem"></i>
+            {{ fc.risk_level|upper }} RISK
+          </span>
+        </div>
+        <div class="grade-badge grade-{{ fc.predicted_grade|replace('+','_plus') }}">
+          {{ fc.predicted_grade }}
+        </div>
+      </div>
+      <div class="fc-body">
+        <!-- Pass probability bar -->
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted">Pass Probability</span>
+          <span class="fw-bold
+            {% if fc.pass_probability >= 70 %}text-success
+            {% elif fc.pass_probability >= 50 %}text-warning
+            {% else %}text-danger{% endif %}">
+            {{ fc.pass_probability }}%
+          </span>
+        </div>
+        <div class="prob-bar">
+          <div class="prob-fill
+            {% if fc.pass_probability >= 70 %}bg-success
+            {% elif fc.pass_probability >= 50 %}bg-warning
+            {% else %}bg-danger{% endif %}"
+            style="width:{{ fc.pass_probability }}%"></div>
+        </div>
+
+        <!-- Metrics row -->
+        <div class="row g-2 my-2">
+          <div class="col-6 text-center p-2 rounded-2" style="background:#f8fafc">
+            <div class="fw-bold" style="color:#4f46e5">{{ fc.att_pct }}%</div>
+            <div class="text-muted" style="font-size:.7rem">Attendance</div>
+          </div>
+          <div class="col-6 text-center p-2 rounded-2" style="background:#f8fafc">
+            <div class="fw-bold" style="color:#06b6d4">
+              {% if fc.marks_pct is not none %}{{ fc.marks_pct }}%{% else %}N/A{% endif %}
+            </div>
+            <div class="text-muted" style="font-size:.7rem">Marks Score</div>
+          </div>
+        </div>
+
+        <!-- Composite score -->
+        <div class="text-center small text-muted mb-2">
+          Composite Score: <strong style="color:#1e293b">{{ fc.composite }}%</strong>
+        </div>
+
+        <!-- Factors -->
+        <div class="mb-2">
+          {% for f in fc.factors %}
+            <span class="factor-chip">{{ f }}</span>
+          {% endfor %}
+        </div>
+
+        <!-- Tip -->
+        <div class="mt-2 p-2 rounded-2 small"
+             style="background:{% if fc.risk_level=='high' %}#fef2f2{% elif fc.risk_level=='medium' %}#fffbeb{% else %}#f0fdf4{% endif %};
+                    color:{% if fc.risk_level=='high' %}#991b1b{% elif fc.risk_level=='medium' %}#92400e{% else %}#065f46{% endif %}">
+          <i class="fas fa-lightbulb me-1"></i>{{ fc.tip }}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+    <div class="col-12">
+      <div class="card"><div class="card-body text-center text-muted py-5">
+        <i class="fas fa-database fa-2x mb-3 d-block"></i>
+        No attendance or marks data available yet. Data will appear once faculty starts recording.
+      </div></div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- ══ INSIGHTS + ACTION PLAN ══════════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+
+  <!-- Structured Insights -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-brain me-2" style="color:#7c3aed"></i>AI Insights
+        </h6>
+        {% for ins in report.insights %}
+        <div class="insight-card {{ ins.type }}">
+          <div class="insight-icon">
+            <i class="{{ ins.icon }}"></i>
+          </div>
+          <div>
+            <div class="fw-bold mb-1" style="font-size:.9rem">{{ ins.title }}</div>
+            <div class="small" style="line-height:1.5">{{ ins.body }}</div>
+          </div>
+        </div>
+        {% else %}
+          <p class="text-muted text-center py-4">Insights will appear once data is available</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Plan -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-tasks me-2 text-primary"></i>Personalised Action Plan
+        </h6>
+        {% for act in report.action_plan %}
+        <div class="action-card">
+          <div class="action-priority-dot mt-1" style="background:{{ act.priority_color }}"></div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="fw-bold small text-dark">{{ act.action }}</span>
+            </div>
+            <div class="text-muted" style="font-size:.78rem;line-height:1.5">{{ act.detail }}</div>
+            <div class="mt-1">
+              <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.72rem">
+                <i class="fas fa-bolt me-1"></i>{{ act.impact }}
+              </span>
+              <span class="badge ms-1" style="background:#f8fafc;color:#64748b;font-size:.72rem;border:1px solid #e2e8f0">
+                {{ act.subject }}
+              </span>
+            </div>
+          </div>
+          <div class="flex-shrink-0">
+            <span class="badge rounded-pill px-2"
+                  style="background:{% if act.priority=='high' %}#fee2e2;color:#991b1b{% elif act.priority=='medium' %}#fef3c7;color:#92400e{% else %}#d1fae5;color:#065f46{% endif %}">
+              {{ act.priority|upper }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STRENGTHS & WEAKNESSES ══════════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-trophy me-2 text-warning"></i>Your Strengths
+        </h6>
+        {% if report.strengths %}
+          {% for s in report.strengths %}
+          <div class="sw-row">
+            <div class="sw-score" style="color:#10b981">{{ s.score }}%</div>
+            <div class="flex-grow-1">
+              <div class="fw-bold small">{{ s.subject }}</div>
+              <div class="text-muted" style="font-size:.75rem">Predicted Grade: {{ s.grade }}</div>
+            </div>
+            <span class="badge" style="background:#d1fae5;color:#065f46">Strong</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center py-3">Keep attending and submitting work to reveal your strengths.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">
+          <i class="fas fa-tools me-2 text-danger"></i>Areas Needing Work
+        </h6>
+        {% if report.weaknesses %}
+          {% for w in report.weaknesses %}
+          <div class="sw-row">
+            <div class="sw-score" style="color:#ef4444">{{ w.score }}%</div>
+            <div class="flex-grow-1">
+              <div class="fw-bold small">{{ w.subject }}</div>
+              <div class="text-muted" style="font-size:.75rem">{{ w.reason }}</div>
+            </div>
+            <span class="badge" style="background:#fee2e2;color:#991b1b">Needs Work</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center py-3">No critical weakness areas detected.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RADAR CHART ══════════════════════════════════════════════════════════ -->
+{% if report.forecasts %}
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="fw-bold mb-3">
+      <i class="fas fa-chart-radar me-2 text-primary"></i>Performance Radar — All Subjects
+    </h6>
+    <div class="row g-3">
+      <div class="col-md-5 d-flex align-items-center justify-content-center">
+        <canvas id="radarChart" style="max-height:300px"></canvas>
+      </div>
+      <div class="col-md-7">
+        <canvas id="compositeBar" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══ DISCLAIMER ══════════════════════════════════════════════════════════ -->
+<div class="p-3 rounded-3 text-center" style="background:#f8fafc;border:1px dashed #cbd5e1">
+  <p class="mb-0 small text-muted">
+    <i class="fas fa-info-circle me-1"></i>
+    This analysis is generated by a rule-based AI model using your attendance and marks data.
+    Predictions are indicative, not guaranteed. Always consult your faculty for academic guidance.
+  </p>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if report.forecasts %}
+const labels = {{ report.forecasts | map(attribute='sub_name') | list | tojson }};
+const attData = {{ report.forecasts | map(attribute='att_pct') | list | tojson }};
+const marksData = {{ report.forecasts | map(attribute='marks_pct') | list | tojson }};
+const compositeData = {{ report.forecasts | map(attribute='composite') | list | tojson }};
+
+// Radar chart
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Attendance %',
+        data: attData,
+        backgroundColor: 'rgba(79,70,229,.15)',
+        borderColor: '#4f46e5', borderWidth: 2, pointRadius: 4,
+        pointBackgroundColor: '#4f46e5'
+      },
+      {
+        label: 'Marks %',
+        data: marksData.map(v => v === null ? 0 : v),
+        backgroundColor: 'rgba(6,182,212,.15)',
+        borderColor: '#06b6d4', borderWidth: 2, pointRadius: 4,
+        pointBackgroundColor: '#06b6d4'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 25 } } },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } }
+  }
+});
+
+// Composite bar
+const riskColors = {{ report.forecasts | map(attribute='risk_level') | list | tojson }};
+const barColors = riskColors.map(r =>
+  r === 'high' ? '#ef4444' : r === 'medium' ? '#f59e0b' : '#10b981'
+);
+
+new Chart(document.getElementById('compositeBar'), {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Composite Score %',
+      data: compositeData,
+      backgroundColor: barColors,
+      borderRadius: 8, borderSkipped: false
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          afterLabel: (ctx) => {
+            const grades = {{ report.forecasts | map(attribute='predicted_grade') | list | tojson }};
+            return 'Predicted: ' + grades[ctx.dataIndex];
+          }
+        }
+      }
+    },
+    scales: {
+      x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: '#f1f5f9' } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block title %}Face Attendance{% endblock %}
+{% block page_title %}Face Recognition Attendance{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex gap-3 mb-3">
+          <div class="col-md-5">
+            <label class="form-label fw-bold">Subject</label>
+            <select id="subjectSelect" class="form-select">
+              {% for s in subjects %}
+                <option value="{{ s.sub_id }}">{{ s.sub_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Date</label>
+            <input type="date" id="attDate" class="form-control" value="{{ today }}">
+          </div>
+        </div>
+
+        <div class="position-relative bg-dark rounded-3 overflow-hidden mb-3" style="aspect-ratio:4/3">
+          <video id="video" class="w-100 h-100 object-fit-cover" autoplay muted></video>
+          <canvas id="overlay" class="position-absolute top-0 start-0 w-100 h-100"></canvas>
+          
+          <div id="camPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white">
+            <i class="fas fa-camera fa-3x mb-3 opacity-50"></i>
+            <p class="opacity-50">Camera not started</p>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" onclick="startCamera()"><i class="fas fa-camera me-2"></i>Start Camera</button>
+          <button class="btn btn-success" id="scanBtn" onclick="startScanning()" disabled>
+            <i class="fas fa-search me-2"></i>Scan Faces
+          </button>
+          <button class="btn btn-danger" id="stopBtn" onclick="stopScanning()" style="display:none">
+            <i class="fas fa-stop me-2"></i>Stop
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-body d-flex flex-column">
+        <h6 class="fw-bold mb-3"><i class="fas fa-users-check me-2"></i>Recognized Students</h6>
+        <div id="recognizedList" class="flex-grow-1" style="overflow-y:auto;max-height:320px">
+          <p class="text-muted text-center py-4">Start scanning to detect students</p>
+        </div>
+        <div class="border-top pt-3 mt-2">
+          <div class="d-flex justify-content-between small text-muted mb-2">
+            <span>Detected: <strong id="detectedCount">0</strong></span>
+            <span>Total: <strong id="totalCount">0</strong></span>
+          </div>
+          <button class="btn btn-success w-100" onclick="saveAttendance()" id="saveBtn" disabled>
+            <i class="fas fa-save me-2"></i>Save Attendance
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let stream = null;
+let scanInterval = null;
+const recognizedIds = new Set();
+const allRecognized = {};
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    document.getElementById('video').srcObject = stream;
+    
+    // FIX 1: Safely remove the Bootstrap d-flex class to hide the placeholder
+    const placeholder = document.getElementById('camPlaceholder');
+    placeholder.classList.remove('d-flex');
+    placeholder.classList.add('d-none');
+    
+    document.getElementById('scanBtn').disabled = false;
+  } catch (e) {
+    alert('Camera access denied: ' + e.message);
+  }
+}
+
+function startScanning() {
+  document.getElementById('scanBtn').style.display = 'none';
+  document.getElementById('stopBtn').style.display = 'inline-block';
+  scanInterval = setInterval(captureAndRecognize, 2000);
+}
+
+function stopScanning() {
+  // 1. Stop taking pictures
+  clearInterval(scanInterval);
+  document.getElementById('scanBtn').style.display = 'inline-block';
+  document.getElementById('stopBtn').style.display = 'none';
+  
+  // FIX 2: Completely kill the media tracks to turn off the camera light
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    document.getElementById('video').srcObject = null;
+    stream = null; // reset stream
+  }
+
+  // Bring the placeholder screen back
+  const placeholder = document.getElementById('camPlaceholder');
+  placeholder.classList.remove('d-none');
+  placeholder.classList.add('d-flex');
+
+  // Allow them to save if they detected anyone
+  if (Object.keys(allRecognized).length > 0) {
+    document.getElementById('saveBtn').disabled = false;
+  }
+}
+
+async function captureAndRecognize() {
+  const video = document.getElementById('video');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const frame = canvas.toDataURL('image/jpeg', 0.7);
+  const subjectId = document.getElementById('subjectSelect').value;
+
+  try {
+    const resp = await fetch('/api/face-recognize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frame, subject_id: subjectId })
+    });
+    const data = await resp.json();
+    data.recognized.forEach(r => {
+      allRecognized[r.student_id] = r;
+      recognizedIds.add(r.student_id);
+    });
+    updateRecognizedList();
+  } catch (e) { console.error(e); }
+}
+
+function updateRecognizedList() {
+  const list = document.getElementById('recognizedList');
+  const items = Object.values(allRecognized);
+  if (items.length === 0) return;
+  list.innerHTML = items.map(r => `
+    <div class="d-flex align-items-center gap-2 p-2 mb-2 rounded-2" style="background:#d1fae5">
+      <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+           style="width:36px;height:36px;background:#10b981;color:#fff;font-weight:700">
+        ${r.name[0].toUpperCase()}
+      </div>
+      <div>
+        <div class="fw-bold text-success small">${r.name}</div>
+        <div class="text-muted" style="font-size:.72rem">Confidence: ${r.confidence}%</div>
+      </div>
+      <i class="fas fa-check-circle text-success ms-auto"></i>
+    </div>
+  `).join('');
+  document.getElementById('detectedCount').textContent = items.length;
+  document.getElementById('totalCount').textContent = items.length;
+  document.getElementById('saveBtn').disabled = false;
+}
+
+async function saveAttendance() {
+  const subjectId = document.getElementById('subjectSelect').value;
+  const attDate   = document.getElementById('attDate').value;
+  const now = new Date();
+  const attTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  const resp = await fetch('/api/save-face-attendance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subject_id: subjectId,
+      date: attDate,
+      time: attTime,
+      present_ids: [...recognizedIds]
+    })
+  });
+  const data = await resp.json();
+  if (data.status === 'ok') {
+    alert(`✅ Attendance saved! ${data.saved} students processed.`);
+    window.location.reload();
+  }
+}
+</script>
+{% endblock %}
