@@ -25,10 +25,13 @@ app.secret_key = 'smart_academic_tracker_secret_2024'
 # ─── DB CONNECTION ────────────────────────────────────────────────────────────
 def get_db():
     return mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='root',
-        database='academic_tracker2'
+        host='gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
+        port=4000,
+        user='P5392VrBsmKjiq4.root',
+        password='opiYF2OhBiyZil4B', # Replace this with your actual TiDB password
+        database='academic_tracker2',
+        ssl_verify_cert=False,
+        ssl_verify_identity=False
     )
 
 # ─── AUTH DECORATORS ──────────────────────────────────────────────────────────
