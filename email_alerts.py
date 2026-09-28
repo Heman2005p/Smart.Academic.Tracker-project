@@ -54,7 +54,7 @@ def _get_db():
     host='gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
     port=4000,
     user='P5392VrBsmKjiq4.root',
-    password='opiYF2OhBiyZil4B',
+    password=os.environ.get('TIDB_PASSWORD'),
     database='academic_tracker2', 
     ssl_verify_cert=True
 )
