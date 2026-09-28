@@ -51,11 +51,12 @@ EMAIL_CONFIG = {
 # ─── DB helper (mirrors app.py) ──────────────────────────────────────────────
 def _get_db():
     return mysql.connector.connect(
-        host=os.environ.get('DB_HOST', 'localhost'),
-        user=os.environ.get('DB_USER', 'root'),
-        password=os.environ.get('DB_PASS', 'root'),
-        database='academic_tracker2'
-    )
+    host='gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
+    port=4000,
+    user='P5392VrBsmKjiq4.root',
+    password='opiYF2OhBiyZil4B', 
+    ssl_verify_cert=True
+)
 
 
 # =============================================================================
