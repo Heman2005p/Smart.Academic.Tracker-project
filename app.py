@@ -30,7 +30,7 @@ def get_db():
         user='P5392VrBsmKjiq4.root',
         password='opiYF2OhBiyZil4B', # Replace this with your actual TiDB password
         database='academic_tracker2',
-        ssl_verify_cert=False,
+        ssl_verify_cert=True,
         ssl_verify_identity=False
     )
 
